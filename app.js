@@ -12,6 +12,12 @@ function resolveMessageTemplate(template, testContext) {
         .replace("{memberValue}", testContext.memberValue);
 }
 
+function resolveObjectMember(object, memberName) {
+    return memberName
+        .split(".")
+        .reduce((prev, value) => value = prev[value], object);
+}
+
 function PredicateTest(predicate, messageTemplate) {
     Test.call(this);
     this.predicate = predicate;
@@ -49,14 +55,13 @@ function Rule(memberName) {
 Rule.prototype.validate = function(object) {
     const result = [];
     for (const test of this.tests) {
-        console.log(test);
         if (!test.whens.every(w => w(object))) {
             continue;
         }
         
         const failures = test.resolve({
             memberName: this.memberName,
-            memberValue: object[this.memberName]
+            memberValue: resolveObjectMember(object, this.memberName)
         });
         if (failures.length > 0) {
             result.push(...failures);
@@ -133,7 +138,12 @@ Validator.prototype.validate = function(object) {
     return globalResult;
 };
 
-function MyValidator() {
+
+
+
+
+
+function SampleValidator() {
     Validator.call(this);
     this.ruleFor("nullRef").null().withMessage("it's not null!!").when(x => x.n === 9);
     this.ruleFor("n").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
@@ -145,17 +155,20 @@ function MyValidator() {
             context.addFailure("string cannot contain an 'a'");
         }
     });
+    this.ruleFor("o.a").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
 }
 
-MyValidator.prototype = Object.create(Validator.prototype);
+SampleValidator.prototype = Object.create(Validator.prototype);
 
 (function test() {
     const obj = {
         n: 10,
         nullRef: 3,
         s: "azerty",
-        o: { },
+        o: {
+            a: 10
+        },
         arr: []
     };
-    console.log(new MyValidator().validate(obj));
+    console.log(new SampleValidator().validate(obj));
 })();
