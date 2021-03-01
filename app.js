@@ -1,13 +1,24 @@
-function PredicateTest(predicate, messageTemplate) {
-    this.predicate = predicate;
-    this.messageTemplate = messageTemplate;
+function Test() {
+    this.whens = [];
 }
+
+Test.prototype.addWhen = function(predicate) {
+    this.whens.push(predicate);
+};
 
 function resolveMessageTemplate(template, testContext) {
     return template
         .replace("{memberName}", testContext.memberName)
         .replace("{memberValue}", testContext.memberValue);
 }
+
+function PredicateTest(predicate, messageTemplate) {
+    Test.call(this);
+    this.predicate = predicate;
+    this.messageTemplate = messageTemplate;
+}
+
+PredicateTest.prototype = Object.create(Test);
 
 PredicateTest.prototype.resolve = function(testContext) {
     const result = [];
@@ -18,8 +29,11 @@ PredicateTest.prototype.resolve = function(testContext) {
 };
 
 function CustomTest(testFunction) {
+    Test.call(this);
     this.testFunction = testFunction;
 }
+
+CustomTest.prototype = Object.create(Test);
 
 CustomTest.prototype.resolve = function(testContext) {
     const context = new ValidationContext();
@@ -35,6 +49,11 @@ function Rule(memberName) {
 Rule.prototype.validate = function(object) {
     const result = [];
     for (const test of this.tests) {
+        console.log(test);
+        if (!test.whens.every(w => w(object))) {
+            continue;
+        }
+        
         const failures = test.resolve({
             memberName: this.memberName,
             memberValue: object[this.memberName]
@@ -68,10 +87,17 @@ Rule.prototype.must = function(predicate) {
 
 Rule.prototype.custom = function(testFunction) {
     this.tests.push(new CustomTest(testFunction));
+    return this;
 };
 
 Rule.prototype.withMessage = function(messageTemplate) {
     this.tests[this.tests.length - 1].messageTemplate = messageTemplate;
+    return this;
+};
+
+Rule.prototype.when = function(predicate) {
+    this.tests[this.tests.length - 1].whens.push(predicate);
+    return this;
 };
 
 function ValidationContext() {
@@ -109,7 +135,7 @@ Validator.prototype.validate = function(object) {
 
 function MyValidator() {
     Validator.call(this);
-    this.ruleFor("nullRef").null().withMessage("it's not null!!");
+    this.ruleFor("nullRef").null().withMessage("it's not null!!").when(x => x.n === 9);
     this.ruleFor("n").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
     this.ruleFor("s").custom((context, value) => {
         if (value.length > 3) {
