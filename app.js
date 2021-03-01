@@ -3,10 +3,16 @@ function PredicateTest(predicate, messageTemplate) {
     this.messageTemplate = messageTemplate;
 }
 
-PredicateTest.prototype.resolve = function(memberValue) {
+function resolveMessageTemplate(template, testContext) {
+    return template
+        .replace("{memberName}", testContext.memberName)
+        .replace("{memberValue}", testContext.memberValue);
+}
+
+PredicateTest.prototype.resolve = function(testContext) {
     const result = [];
-    if (this.predicate(memberValue)) {
-        result.push(this.messageTemplate(memberValue));
+    if (!this.predicate(testContext.memberValue)) {
+        result.push(resolveMessageTemplate(this.messageTemplate, testContext));
     }
     return result;
 };
@@ -15,10 +21,10 @@ function CustomTest(testFunction) {
     this.testFunction = testFunction;
 }
 
-CustomTest.prototype.resolve = function(memberValue) {
+CustomTest.prototype.resolve = function(testContext) {
     const context = new ValidationContext();
-    this.testFunction(context, memberValue);
-    return context.failures;
+    this.testFunction(context, testContext.memberValue);
+    return context.failures.map(message => resolveMessageTemplate(message, testContext));
 };
 
 function Rule(memberName) {
@@ -29,8 +35,10 @@ function Rule(memberName) {
 Rule.prototype.validate = function(object) {
     const result = [];
     for (const test of this.tests) {
-        const memberValue = object[this.memberName];
-        const failures = test.resolve(memberValue);
+        const failures = test.resolve({
+            memberName: this.memberName,
+            memberValue: object[this.memberName]
+        });
         if (failures.length > 0) {
             result.push(...failures);
         }
@@ -40,14 +48,14 @@ Rule.prototype.validate = function(object) {
 
 Rule.prototype.null = function() {
     const predicate = x => x === null;
-    const template = value => `'${this.memberName}' must be null, but found '${value}'`;
+    const template = "'{memberName}' must be null, but found '${memberValue}'";
     this.tests.push(new PredicateTest(predicate, template));
     return this;
 };
 
 Rule.prototype.notNull = function() {
     const predicate = x => x !== null;
-    const template = value => `'${this.memberName}' must not be null, but found '${value}'`;
+    const template = "'{memberName}' must be not null, but found '${memberValue}'";
     this.tests.push(new PredicateTest(predicate, template));
     return this;
 };
@@ -62,16 +70,8 @@ Rule.prototype.custom = function(testFunction) {
     this.tests.push(new CustomTest(testFunction));
 };
 
-Rule.prototype.withMessage = function(message) {
-    let template;
-    if (typeof message === "function") {
-        template = message;
-    } else if (typeof message === "string") {
-        template = value => message;
-    } else {
-        throw new Error("Expected message to be a string or a function of the found value.");
-    }
-    this.tests[this.tests.length - 1].template = template;
+Rule.prototype.withMessage = function(messageTemplate) {
+    this.tests[this.tests.length - 1].messageTemplate = messageTemplate;
 };
 
 function ValidationContext() {
@@ -110,10 +110,10 @@ Validator.prototype.validate = function(object) {
 function MyValidator() {
     Validator.call(this);
     this.ruleFor("nullRef").null().withMessage("it's not null!!");
-    this.ruleFor("n").null();
+    this.ruleFor("n").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
     this.ruleFor("s").custom((context, value) => {
         if (value.length > 3) {
-            context.addFailure("string too long!!");
+            context.addFailure("'{memberName}' string too long!!");
         }
         if (value.includes("a")) {
             context.addFailure("string cannot contain an 'a'");
