@@ -1,6 +1,6 @@
 function Test(predicate, template) {
     this.predicate = predicate;
-    this.message = template || "Test failed";
+    this.template = template;
 }
 
 function Rule(memberName) {
@@ -11,16 +11,39 @@ function Rule(memberName) {
 Rule.prototype.Validate = function(object) {
     const result = [];
     for (const test of this.tests) {
-        if (!test.predicate(object[this.memberName])) {
-            result.push(test.message);
+        const memberValue = object[this.memberName]
+        if (!test.predicate(memberValue)) {
+            const message = test.template(memberValue);
+            result.push(message);
         }
     }
     return result;
 };
 
 Rule.prototype.Null = function() {
-    this.tests.push(new Test(x => x === null, "value is not null"));
+    const predicate = x => x === null;
+    const template = value => `'${this.memberName}' must be null, but found '${value}'`;
+    this.tests.push(new Test(predicate, template));
     return this;
+};
+
+Rule.prototype.NotNull = function() {
+    const predicate = x => x !== null;
+    const template = value => `'${this.memberName}' must not be null, but found '${value}'`;
+    this.tests.push(new Test(predicate, template));
+    return this;
+};
+
+Rule.prototype.WithMessage = function(message) {
+    let template;
+    if (typeof message === "function") {
+        template = message;
+    } else if (typeof message === "string") {
+        template = value => message;
+    } else {
+        throw new Error("Expected message to be a string or a function of the found value.");
+    }
+    this.tests[this.tests.length - 1].template = template;
 };
 
 function Validator() {
@@ -34,14 +57,22 @@ Validator.prototype.RuleFor = function(memberName) {
 };
 
 Validator.prototype.Validate = function(object) {
+    const globalResult = {
+        isSuccess: true
+    };
     for (const rule of this.rules) {
-        console.log(rule.Validate(object));
+        const ruleResult = rule.Validate(object);
+        if (ruleResult.length > 0) {
+            globalResult[rule.memberName] = ruleResult;
+            globalResult.isSuccess = false;
+        }
     }
+    return globalResult;
 };
 
 function MyValidator() {
     Validator.call(this);
-    this.RuleFor("nullRef").Null();
+    this.RuleFor("nullRef").Null().WithMessage("it's not null!!");
 }
 
 MyValidator.prototype = Object.create(Validator.prototype);
@@ -49,10 +80,10 @@ MyValidator.prototype = Object.create(Validator.prototype);
 (function test() {
     const obj = {
         n: 10,
-        nullRef: null,
+        nullRef: 3,
         s: "azerty",
         o: { },
         arr: []
     };
-    const v1 = new MyValidator().Validate(obj);
+    console.log(new MyValidator().Validate(obj));
 })();
