@@ -13,7 +13,9 @@ class SampleValidator extends Validator {
                 context.addFailure("string cannot contain an 'a'");
             }
         });
-        this.rule("o.a").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
+        this.rule("o.a")
+            .null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!")
+            .when(x => x.o);
     }
 }
 
@@ -27,5 +29,12 @@ class SampleValidator extends Validator {
         },
         arr: []
     };
+
+    try {
+        new SampleValidator().validate(obj, { throwOnFailure: true });
+    } catch (err) {
+        console.log(err);
+    }
+
     console.log(new SampleValidator().validate(obj));
 })();

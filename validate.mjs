@@ -1,3 +1,5 @@
+"use strict";
+
 function resolveMessageTemplate(template, testContext) {
     return template
         .replace("{memberName}", testContext.memberName)
@@ -131,11 +133,12 @@ class Validator {
         return rule;
     }
 
-    validate(object) {
+    validate(object, options = {}) {
         const globalResult = {
             isSuccess: true,
             failures: {}
         };
+
         for (const rule of this.rules) {
             const ruleResult = rule.validate(object);
             if (ruleResult.length > 0) {
@@ -143,6 +146,13 @@ class Validator {
                 globalResult.isSuccess = false;
             }
         }
+
+        if (options.throwOnFailure && !globalResult.isSuccess) {
+            const error = new Error("Validation failed.");
+            error.validationResult = globalResult;
+            throw error;
+        }
+
         return globalResult;
     }
 }
