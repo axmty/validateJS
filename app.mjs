@@ -1,0 +1,31 @@
+import Validator from "./validate.mjs"
+
+class SampleValidator extends Validator {
+    constructor() {
+        super();
+        this.rule("nullRef").null().withMessage("it's not null!!").when(x => x.n === 9);
+        this.rule("n").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
+        this.rule("s").custom((context, value) => {
+            if (value.length > 3) {
+                context.addFailure("'{memberName}' string too long!!");
+            }
+            if (value.includes("a")) {
+                context.addFailure("string cannot contain an 'a'");
+            }
+        });
+        this.rule("o.a").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
+    }
+}
+
+(function test() {
+    const obj = {
+        n: 10,
+        nullRef: 3,
+        s: "azerty",
+        o: {
+            a: 10
+        },
+        arr: []
+    };
+    console.log(new SampleValidator().validate(obj));
+})();
