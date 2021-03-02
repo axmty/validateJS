@@ -3,8 +3,8 @@ import Validator from "./validate.mjs"
 class SampleValidator extends Validator {
     constructor() {
         super();
-        this.rule("nullRef").null().withMessage("it's not null!!").when(x => x.n === 9);
-        this.rule("n").null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!");
+        this.rule("nullRef").null().when(x => x.n === 9);
+        this.rule("n").null();
         this.rule("s").custom((context, value) => {
             if (value.length > 3) {
                 context.addFailure("'{memberName}' string too long!!");
@@ -13,9 +13,8 @@ class SampleValidator extends Validator {
                 context.addFailure("string cannot contain an 'a'");
             }
         });
-        this.rule("o.a")
-            .null().withMessage("'{memberName}' is '{memberValue}', but it should be null!!")
-            .when(x => x.o);
+        this.rule("o.a").null().when(x => x.o);
+        this.rule("arr").truly();
     }
 }
 
@@ -27,7 +26,7 @@ class SampleValidator extends Validator {
         o: {
             a: 10
         },
-        arr: []
+        arr: 0
     };
 
     try {

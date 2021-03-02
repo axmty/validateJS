@@ -78,22 +78,54 @@ class Rule {
 
     null() {
         const predicate = x => x === null;
-        const template = "'{memberName}' must be null, but found '${memberValue}'";
+        const template = "'{memberName}' must be null, but found '{memberValue}'";
         this.tests.push(new PredicateTest(predicate, template));
         return this;
     }
 
     notNull() {
         const predicate = x => x !== null;
-        const template = "'{memberName}' must be not null, but found '${memberValue}'";
+        const template = "'{memberName}' must be not null, but found '{memberValue}'";
         this.tests.push(new PredicateTest(predicate, template));
         return this;
     }
 
     must(predicate) {
-        const template = value => "Validation failed.";
+        const template = "Validation failed.";
         this.tests.push(new PredicateTest(predicate, template));
         return this;
+    }
+
+    falsy() {
+        const predicate = x => !x;
+        const template = "'{memberName}' must be falsy, but found '{memberValue}'";
+        this.tests.push(new PredicateTest(predicate, template));
+    }
+
+    truly() {
+        const predicate = x => x;
+        const template = "'{memberName}' must be truly, but found '{memberValue}'";
+        this.tests.push(new PredicateTest(predicate, template));
+    }
+
+    empty() {
+        const predicate = x => !x || (typeof x === "string" && x.split("").every(c => c === " "));
+        const template = "'{memberName}' must be empty, but found '{memberValue}'";
+        this.tests.push(new PredicateTest(predicate, template));
+    }
+
+    equal(other) {
+        const predicate = x => x == other;
+        const stringifiedOther = JSON.stringify(JSON.parse(other));
+        const template = `'{memberName}' must be equal to '${stringifiedOther}', but found '{memberValue}'`;
+        this.tests.push(new PredicateTest(predicate, template));
+    }
+
+    notEqual(other) {
+        const predicate = x => x != other;
+        const stringifiedOther = JSON.stringify(JSON.parse(other));
+        const template = `'{memberName}' must not be equal to '${stringifiedOther}', but found '{memberValue}'`;
+        this.tests.push(new PredicateTest(predicate, template));
     }
 
     custom(testFunction) {
