@@ -14,7 +14,7 @@ class SampleValidator extends Validator {
             }
         });
         this.rule("o.a").null().when(x => x.o);
-        this.rule("arr").truly();
+        this.rule("arr").truly().withMessage("arr is not truly sorry");
         this.rule("s").equal(false);
     }
 }

@@ -12,33 +12,35 @@ function resolveMemberValue(object, memberName) {
         .reduce((prev, value) => value = prev[value], object);
 }
 
-class Test {
-    constructor(testFunction) {
-        this.preconditions = [];
-        this.testFunction = testFunction;
-        this.customMessageTemplate = null;
-    }
+const Test = function(test) {
+    const preconditions = [];
+    const testFunction = test;
+    let customMessageTemplate = null;
     
-    addPrecondition(predicate) {
-        this.preconditions.push(predicate);
-    }
-
-    resolve(ruleContext) {
-        if (!this.preconditions.every(w => w(ruleContext.object))) {
-            return [];
+    return {
+        addPrecondition(predicate) {
+            preconditions.push(predicate);
+        },
+        resolve(ruleContext) {
+            if (!preconditions.every(w => w(ruleContext.object))) {
+                return [];
+            }
+    
+            const validationContext = new ValidationContext();
+            testFunction(validationContext, ruleContext.memberValue);
+    
+            if (validationContext.failures.length > 0 && customMessageTemplate !== null) {
+                return [resolveMessageTemplate(customMessageTemplate, ruleContext.memberName, ruleContext.memberValue)];
+            } else {
+                return validationContext.failures.map(
+                    msg => resolveMessageTemplate(msg, ruleContext.memberName, ruleContext.memberValue));
+            }
+        },
+        set customMessageTemplate(template) {
+            customMessageTemplate = template;
         }
-
-        const validationContext = new ValidationContext();
-        this.testFunction(validationContext, ruleContext.memberValue);
-
-        if (validationContext.failures.length > 0 && this.customMessageTemplate !== null) {
-            return [resolveMessageTemplate(this.customMessageTemplate, ruleContext.memberName, ruleContext.memberValue)];
-        } else {
-            return validationContext.failures.map(
-                msg => resolveMessageTemplate(msg, ruleContext.memberName, ruleContext.memberValue));
-        }
-    }
-}
+    };
+};
 
 class Rule {
     constructor(memberName) {
@@ -143,8 +145,8 @@ class Rule {
         return this;
     }
 
-    withMessage(messageTemplate) {
-        this.tests[this.tests.length - 1].messageTemplate = messageTemplate;
+    withMessage(customMessageTemplate) {
+        this.tests[this.tests.length - 1].customMessageTemplate = customMessageTemplate;
         return this;
     }
 
@@ -154,49 +156,51 @@ class Rule {
     }
 }
 
-class ValidationContext {
-    constructor() {
-        this.failures = [];
-    }
+const ValidationContext = function() {
+    const failures = [];
 
-    addFailure(message) {
-        this.failures.push(message);
-    }
-}
+    return {
+        addFailure(message) {
+            failures.push(message);
+        },
+        get failures() {
+            return failures;
+        }
+    };
+};
 
-class Validator {
-    constructor() {
-        this.rules = [];
-    }
+const Validator = function() {
+    const rules = [];
 
-    rule(memberName) {
-        const rule = new Rule(memberName);
-        this.rules.push(rule);
-        return rule;
-    }
-
-    validate(object, options = {}) {
-        const globalResult = {
-            isSuccess: true,
-            failures: {}
-        };
-
-        for (const rule of this.rules) {
-            const ruleResult = rule.validate(object);
-            if (ruleResult.length > 0) {
-                globalResult.failures[rule.memberName] = ruleResult;
-                globalResult.isSuccess = false;
+    return {
+        rule(memberName) {
+            const rule = new Rule(memberName);
+            rules.push(rule);
+            return rule;
+        },
+        validate(object, options = {}) {
+            const globalResult = {
+                isSuccess: true,
+                failures: {}
+            };
+    
+            for (const rule of rules) {
+                const ruleResult = rule.validate(object);
+                if (ruleResult.length > 0) {
+                    globalResult.failures[rule.memberName] = ruleResult;
+                    globalResult.isSuccess = false;
+                }
             }
+    
+            if (options.throwOnFailure && !globalResult.isSuccess) {
+                const error = new Error("Validation failed.");
+                error.validationResult = globalResult;
+                throw error;
+            }
+    
+            return globalResult;
         }
-
-        if (options.throwOnFailure && !globalResult.isSuccess) {
-            const error = new Error("Validation failed.");
-            error.validationResult = globalResult;
-            throw error;
-        }
-
-        return globalResult;
-    }
-}
+    };
+};
 
 export default Validator;
