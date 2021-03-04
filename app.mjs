@@ -30,11 +30,6 @@ class SampleValidator extends Validator {
         arr: 0
     };
 
-    try {
-        new SampleValidator().validate(obj, { throwOnFailure: true });
-    } catch (err) {
-        console.log(err);
-    }
-
-    console.log(new SampleValidator().validate(obj));
+    console.log(new SampleValidator().validate(obj, options => options.throwOnFailures()));
+    // console.log(new SampleValidator().validate(obj));
 })();

@@ -1,12 +1,6 @@
 "use strict";
 
-function resolveMemberValue(object, memberName) {
-    return memberName
-        .split(".")
-        .reduce((prev, value) => value = prev[value], object);
-}
-
-const Test = function(test) {
+const Test = function(testFunction) {
     function resolveMessageTemplate(template, memberName, memberValue) {
         return template
             .replace("{memberName}", memberName)
@@ -14,7 +8,6 @@ const Test = function(test) {
     }
     
     const preconditions = [];
-    const testFunction = test;
     let customMessageTemplate = null;
     
     return {
@@ -25,8 +18,8 @@ const Test = function(test) {
             if (!preconditions.every(w => w(ruleContext.object))) {
                 return [];
             }
-    
-            const validationContext = new ValidationContext();
+
+            const validationContext = ValidationContext();
             testFunction(validationContext, ruleContext.memberValue);
     
             if (validationContext.failures.length > 0 && customMessageTemplate !== null) {
@@ -43,10 +36,18 @@ const Test = function(test) {
 };
 
 const Rule = function(memberName) {
-    const memberName = memberName;
+    function resolveMemberValue(object, memberName) {
+        return memberName
+            .split(".")
+            .reduce((prev, value) => value = prev[value], object);
+    }
+
     const tests = [];
 
     return {
+        get memberName() {
+            return memberName;
+        },
         validate(object) {
             const result = [];
             const ruleContext = {
@@ -131,7 +132,7 @@ const Rule = function(memberName) {
             return this;
         },
         custom(testFunction) {
-            tests.push(new Test(testFunction));
+            tests.push(Test(testFunction));
             return this;
         },
         withMessage(customMessageTemplate) {
@@ -141,6 +142,23 @@ const Rule = function(memberName) {
         when(predicate) {
             tests[tests.length - 1].addPrecondition(predicate);
             return this;
+        }
+    };
+};
+
+function ValidationOptions() {
+    this.throwOnFailures = false;
+}
+
+const ValidationStrategy = function() {
+    const options = new ValidationOptions();
+
+    return {
+        throwOnFailures() {
+            options.throwOnFailures = true;
+        },
+        get options() {
+            return options;
         }
     };
 };
@@ -158,30 +176,43 @@ const ValidationContext = function() {
     };
 };
 
+function ValidationResult() {
+    this.isValid = true;
+    this.errors = {};
+}
+
 const Validator = function() {
     const rules = [];
 
+    function buildOptions(strategyConfiguration) {
+        const config = strategyConfiguration || (options => options);
+        const strategy = ValidationStrategy();
+        config(strategy);
+        return strategy.options;
+    }
+
     return {
         rule(memberName) {
-            const rule = new Rule(memberName);
+            const rule = Rule(memberName);
             rules.push(rule);
             return rule;
         },
-        validate(object, options = {}) {
-            const globalResult = {
-                isSuccess: true,
-                failures: {}
-            };
-    
+        validate(object, strategyConfiguration) {
+            const options = strategyConfiguration === undefined
+                ? new ValidationOptions()
+                : buildOptions(strategyConfiguration);
+
+            const globalResult = new ValidationResult();
+
             for (const rule of rules) {
                 const ruleResult = rule.validate(object);
                 if (ruleResult.length > 0) {
-                    globalResult.failures[rule.memberName] = ruleResult;
-                    globalResult.isSuccess = false;
+                    globalResult.errors[rule.memberName] = ruleResult;
+                    globalResult.isValid = false;
                 }
             }
     
-            if (options.throwOnFailure && !globalResult.isSuccess) {
+            if (options.throwOnFailures && !globalResult.isSuccess) {
                 const error = new Error("Validation failed.");
                 error.validationResult = globalResult;
                 throw error;
