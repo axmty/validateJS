@@ -1,11 +1,5 @@
 "use strict";
 
-function resolveMessageTemplate(template, memberName, memberValue) {
-    return template
-        .replace("{memberName}", memberName)
-        .replace("{memberValue}", memberValue);
-}
-
 function resolveMemberValue(object, memberName) {
     return memberName
         .split(".")
@@ -13,6 +7,12 @@ function resolveMemberValue(object, memberName) {
 }
 
 const Test = function(test) {
+    function resolveMessageTemplate(template, memberName, memberValue) {
+        return template
+            .replace("{memberName}", memberName)
+            .replace("{memberValue}", memberValue);
+    }
+    
     const preconditions = [];
     const testFunction = test;
     let customMessageTemplate = null;
@@ -42,119 +42,108 @@ const Test = function(test) {
     };
 };
 
-class Rule {
-    constructor(memberName) {
-        this.memberName = memberName;
-        this.tests = [];
-    }
+const Rule = function(memberName) {
+    const memberName = memberName;
+    const tests = [];
 
-    validate(object) {
-        const result = [];
-        const ruleContext = {
-            memberName: this.memberName,
-            memberValue: resolveMemberValue(object, this.memberName),
-            object: object
-        };
-
-        for (const test of this.tests) {
-            const failures = test.resolve(ruleContext);
-            if (failures.length > 0) {
-                result.push(...failures);
+    return {
+        validate(object) {
+            const result = [];
+            const ruleContext = {
+                memberName: memberName,
+                memberValue: resolveMemberValue(object, memberName),
+                object: object
+            };
+    
+            for (const test of tests) {
+                const failures = test.resolve(ruleContext);
+                if (failures.length > 0) {
+                    result.push(...failures);
+                }
             }
+    
+            return result;
+        },
+        null() {
+            this.custom((context, value) => {
+                if (value !== null) {
+                    context.addFailure("'{memberName}' must be null, but found '{memberValue}'.");
+                }
+            });
+            return this;
+        },
+        notNull() {
+            this.custom((context, value) => {
+                if (value === null) {
+                    context.addFailure("'{memberName}' must be not null, but found '{memberValue}'.");
+                }
+            });
+            return this;
+        },
+        must(predicate) {
+            this.custom((context, value) => {
+                if (!predicate(value)) {
+                    context.addFailure("Validation failed.");
+                }
+            });
+            return this;
+        },
+        falsy() {
+            this.custom((context, value) => {
+                if (value) {
+                    context.addFailure("'{memberName}' must be falsy, but found '{memberValue}'.");
+                }
+            });
+            return this;
+        },
+        truly() {
+            this.custom((context, value) => {
+                if (!value) {
+                    context.addFailure("'{memberName}' must be truly, but found '{memberValue}'.");
+                }
+            });
+            return this;
+        },
+        empty() {
+            this.custom((context, value) => {
+                if (value && (typeof value !== "string" || !value.split("").every(c => c === " "))) {
+                    context.addFailure("'{memberName}' must be empty, but found '{memberValue}'.");
+                }
+            });
+            return this;
+        },
+        equal(other) {
+            this.custom((context, value) => {
+                if (value != other) {
+                    const stringifiedOther = JSON.stringify(JSON.parse(other));
+                    context.addFailure(`'{memberName}' must be loosely equal to '${stringifiedOther}', but found '{memberValue}'.`);
+                }
+            });
+            return this;
+        },
+        notEqual(other) {
+            this.custom((context, value) => {
+                if (value == other) {
+                    const stringifiedOther = JSON.stringify(JSON.parse(other));
+                    context.addFailure(`'{memberName}' must not be loosely equal to '${stringifiedOther}', but found '{memberValue}'.`);
+                }
+            });
+            return this;
+        },
+        custom(testFunction) {
+            tests.push(new Test(testFunction));
+            return this;
+        },
+        withMessage(customMessageTemplate) {
+            tests[tests.length - 1].customMessageTemplate = customMessageTemplate;
+            return this;
+        },
+        when(predicate) {
+            tests[tests.length - 1].addPrecondition(predicate);
+            return this;
         }
-
-        return result;
-    }
-
-    null() {
-        this.custom((context, value) => {
-            if (value !== null) {
-                context.addFailure("'{memberName}' must be null, but found '{memberValue}'.");
-            }
-        });
-        return this;
-    }
-
-    notNull() {
-        this.custom((context, value) => {
-            if (value === null) {
-                context.addFailure("'{memberName}' must be not null, but found '{memberValue}'.");
-            }
-        });
-        return this;
-    }
-
-    must(predicate) {
-        this.custom((context, value) => {
-            if (!predicate(value)) {
-                context.addFailure("Validation failed.");
-            }
-        });
-        return this;
-    }
-
-    falsy() {
-        this.custom((context, value) => {
-            if (value) {
-                context.addFailure("'{memberName}' must be falsy, but found '{memberValue}'.");
-            }
-        });
-        return this;
-    }
-
-    truly() {
-        this.custom((context, value) => {
-            if (!value) {
-                context.addFailure("'{memberName}' must be truly, but found '{memberValue}'.");
-            }
-        });
-        return this;
-    }
-
-    empty() {
-        this.custom((context, value) => {
-            if (value && (typeof value !== "string" || !value.split("").every(c => c === " "))) {
-                context.addFailure("'{memberName}' must be empty, but found '{memberValue}'.");
-            }
-        });
-        return this;
-    }
-
-    equal(other) {
-        this.custom((context, value) => {
-            if (value != other) {
-                const stringifiedOther = JSON.stringify(JSON.parse(other));
-                context.addFailure(`'{memberName}' must be loosely equal to '${stringifiedOther}', but found '{memberValue}'.`);
-            }
-        });
-        return this;
-    }
-
-    notEqual(other) {
-        this.custom((context, value) => {
-            if (value == other) {
-                const stringifiedOther = JSON.stringify(JSON.parse(other));
-                context.addFailure(`'{memberName}' must not be loosely equal to '${stringifiedOther}', but found '{memberValue}'.`);
-            }
-        });
-        return this;
-    }
-
-    custom(testFunction) {
-        this.tests.push(new Test(testFunction));
-        return this;
-    }
-
-    withMessage(customMessageTemplate) {
-        this.tests[this.tests.length - 1].customMessageTemplate = customMessageTemplate;
-        return this;
-    }
-
-    when(predicate) {
-        this.tests[this.tests.length - 1].addPrecondition(predicate);
-        return this;
-    }
-}
+    };
+};
 
 const ValidationContext = function() {
     const failures = [];
