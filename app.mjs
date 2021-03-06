@@ -5,7 +5,7 @@ class SampleValidator extends Validator {
         super();
         this.rule("nullRef").null().when(x => x.n === 9);
         this.rule("n").null();
-        this.rule("s").custom((context, value) => {
+        this.rule("s").custom((value, context) => {
             if (value.length > 3) {
                 context.addFailure("'{memberName}' string too long!!");
             }
@@ -31,5 +31,5 @@ class SampleValidator extends Validator {
     };
 
     console.log(new SampleValidator().validate(obj, options => options.throwOnFailures()));
-    // console.log(new SampleValidator().validate(obj));
+    console.log(new SampleValidator().validate(obj));
 })();
