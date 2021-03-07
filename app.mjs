@@ -1,4 +1,4 @@
-import Validator from "./validate.mjs"
+import Validator from "./module/validate.mjs"
 
 class SamplePersonValidator extends Validator {
     constructor() {
@@ -37,8 +37,7 @@ class SamplePersonValidator extends Validator {
     console.log(new SamplePersonValidator().validate(person, options => options.includeDefaultRuleSet()));
     try {
         new SamplePersonValidator().validate(person, options => options.throwOnFailures());
-    } catch (err)
-    {
+    } catch (err) {
         console.log(err);
     }
 })();
