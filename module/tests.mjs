@@ -1,10 +1,7 @@
-const Test = function({ isValid, defaultMessageTemplate }) {
-    const preconditions = [];
+"use strict";
 
+const Test = function({ isValid, defaultMessageTemplate }) {
     return {
-        addPrecondition(predicate) {
-            preconditions.push(predicate);
-        },
         defineMessageTemplate: function(template) {
             this.messageTemplate = template;
         },
@@ -15,7 +12,7 @@ const Test = function({ isValid, defaultMessageTemplate }) {
 
 const Null = function() {
     return Test({
-        isValid: function(value) {
+        isValid: function(value, context) {
             return value === null;
         },
         defaultMessageTemplate: "'{memberName}' must be null."

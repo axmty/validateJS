@@ -3,16 +3,24 @@
 import * as testFactories from "./tests.mjs"
 
 const Rule = function(memberName) {
+    const preconditions = [];
     const tests = [];
-
+    
     return {
         get memberName() {
             return memberName;
+        },
+        addPrecondition(predicate) {
+            preconditions.push(predicate);
         },
         validate(context) {
             const value = context.resolveMemberValue(memberName);
             context.currentRule = this;
     
+            if (!preconditions.every(pc => pc(context.object))) {
+                return;
+            }
+
             for (const test of tests) {
                 const isValid = test.isValid(value, context);
                 if (!isValid) {
@@ -65,7 +73,7 @@ const Rule = function(memberName) {
             return this;
         },
         when(predicate) {
-            tests[tests.length - 1].addPrecondition(predicate);
+            preconditions.push(predicate);
             return this;
         }
     };
@@ -93,6 +101,9 @@ const ValidationContext = function(object) {
         },
         set currentRule(rule) {
             currentRule = rule;
+        },
+        get object() {
+            return object;
         }
     };
 };
