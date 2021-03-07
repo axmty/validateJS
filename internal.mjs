@@ -44,6 +44,10 @@ const Rule = function(memberName) {
             tests.push(testFactories.Empty());
             return this;
         },
+        notEmpty() {
+            tests.push(testFactories.NotEmpty());
+            return this;
+        },
         equal(other) {
             tests.push(testFactories.Equal(other));
             return this;

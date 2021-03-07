@@ -60,9 +60,22 @@ const Truly = function() {
 const Empty = function() {
     return Test({
         isValid: function(value, context) {
-            return !value || (typeof value === "string" && isWhitespaces(value));
+            return !value ||
+                (typeof value === "string" && isWhitespaces(value)) ||
+                (Array.isArray(value) && value.length === 0);
         },
         defaultMessageTemplate: "'{memberName}' must be empty."
+    });
+};
+
+const NotEmpty = function() {
+    return Test({
+        isValid: function(value, context) {
+            return !!value &&
+                (typeof value !== "string" || !isWhitespaces(value)) &&
+                (!Array.isArray(value) || value.length > 0);
+        },
+        defaultMessageTemplate: "'{memberName}' must not be empty."
     });
 };
 
@@ -104,6 +117,7 @@ export {
     Truly,
     Falsy,
     Empty,
+    NotEmpty,
     Equal,
     NotEqual,
     Custom

@@ -1,35 +1,44 @@
 import Validator from "./validate.mjs"
 
-class SampleValidator extends Validator {
+class SamplePersonValidator extends Validator {
     constructor() {
         super();
-        this.rule("nullRef").null().when(x => x.n === 9);
-        this.rule("n").null();
-        this.rule("s").custom((value, context) => {
-            if (value.length > 3) {
-                context.addFailure("'{memberName}' string too long!!");
-            }
-            if (value.includes("a")) {
-                context.addFailure("string cannot contain an 'a'");
-            }
+        this.ruleSet("address", () => {
+            this.rule("address").notNull();
+            this.rule("address.city").notEmpty();
+            this.rule("address.country").notEmpty();
         });
-        this.rule("o.a").null().when(x => x.o);
-        this.rule("arr").truly().withMessage("arr is not truly sorry");
-        this.rule("s").equal(false);
+
+        this.ruleSet("names", () => {
+            this.rule("surname").notEmpty();
+            this.rule("forename").notEmpty();
+        });
+
+        this.rule("age").notEmpty();
+        this.rule("pets").notEmpty().when(p => p.hasPets);
     }
 }
 
 (function test() {
-    const obj = {
-        n: 10,
-        nullRef: 3,
-        s: "azerty",
-        o: {
-            a: 10
+    const person = {
+        surname: "John",
+        forename: "Doe",
+        age: 23,
+        address: {
+            city: "Paris",
+            country: null
         },
-        arr: 0
+        hasPets: true,
+        pets: []
     };
 
-    console.log(new SampleValidator().validate(obj, options => options.throwOnFailures()));
-    console.log(new SampleValidator().validate(obj));
+    console.log(new SamplePersonValidator().validate(person));
+    console.log(new SamplePersonValidator().validate(person, options => options.includeRuleSets("address")));
+    console.log(new SamplePersonValidator().validate(person, options => options.includeDefaultRuleSet()));
+    try {
+        new SamplePersonValidator().validate(person, options => options.throwOnFailures());
+    } catch (err)
+    {
+        console.log(err);
+    }
 })();
