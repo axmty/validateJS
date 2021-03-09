@@ -8,12 +8,15 @@ const ValidationStrategy = function() {
     return {
         throwOnFailures() {
             options.throwOnFailures = true;
+            return this;
         },
         includeRuleSets(...ruleSetNames) {
             options.ruleSetNames.push(...ruleSetNames);
+            return this;
         },
         includeDefaultRuleSet() {
             options.ruleSetNames.push("default");
+            return this;
         },
         get options() {
             return options;
@@ -36,8 +39,25 @@ const Validator = function() {
         return ruleSets.filter(filterPredicate).flatMap(s => s.rules);
     }
 
+    function buildConditionalRules(precondition, rulesBuilder) {
+        currentPrecondition = precondition;
+        rulesBuilder();
+        currentPrecondition = null;
+    }
+
+    function OtherwiseBuilder(precondition) {
+        return {
+            otherwise(rulesBuilder) {
+                currentPrecondition = precondition;
+                rulesBuilder();
+                currentPrecondition = null;
+            }
+        };
+    }
+
     const ruleSets = [];
     let currentRuleSetName = "default";
+    let currentPrecondition = null;
 
     return {
         ruleSet(name, ruleSetBuilder) {
@@ -51,7 +71,12 @@ const Validator = function() {
                 set = { name: currentRuleSetName, rules: [] };
                 ruleSets.push(set);
             }
+            
             const rule = Rule(memberName);
+            if (currentPrecondition) {
+                rule.addPrecondition(currentPrecondition);
+            }
+
             set.rules.push(rule);
             return rule;
         },
@@ -75,6 +100,14 @@ const Validator = function() {
             }
     
             return globalResult;
+        },
+        when(predicate, rulesBuilder) {
+            buildConditionalRules(object => predicate(object), rulesBuilder);
+            return OtherwiseBuilder(object => !predicate(object));
+        },
+        unless(predicate, rulesBuilder) {
+            buildConditionalRules(object => !predicate(object), rulesBuilder);
+            return OtherwiseBuilder(object => predicate(object));
         }
     };
 };

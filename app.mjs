@@ -16,6 +16,14 @@ class SamplePersonValidator extends Validator {
 
         this.rule("age").notEmpty();
         this.rule("pets").notEmpty().when(p => p.hasPets);
+
+        this.unless(person => person.age > 24, () => {
+            this.rule("surname").notEmpty();
+            this.rule("forename").notEmpty();
+        }).otherwise(() => {
+            this.rule("surname").empty();
+            this.rule("forename").empty();
+        });
     }
 }
 
@@ -33,11 +41,11 @@ class SamplePersonValidator extends Validator {
     };
 
     console.log(new SamplePersonValidator().validate(person));
-    console.log(new SamplePersonValidator().validate(person, options => options.includeRuleSets("address")));
-    console.log(new SamplePersonValidator().validate(person, options => options.includeDefaultRuleSet()));
-    try {
-        new SamplePersonValidator().validate(person, options => options.throwOnFailures());
-    } catch (err) {
-        console.log(err);
-    }
+    // console.log(new SamplePersonValidator().validate(person, options => options.includeRuleSets("address")));
+    // console.log(new SamplePersonValidator().validate(person, options => options.includeDefaultRuleSet()));
+    // try {
+    //     new SamplePersonValidator().validate(person, options => options.throwOnFailures());
+    // } catch (err) {
+    //     console.log(err);
+    // }
 })();
